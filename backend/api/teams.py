@@ -39,6 +39,14 @@ def create_team(
             detail=f"You are already an active member of team '{existing_membership.team.name}' for {team.hackathon_name}."
         )
 
+    # Check if hackathon registration is closed
+    hackathon = db.query(models.Hackathon).filter(models.Hackathon.name == team.hackathon_name).first()
+    if hackathon and str(hackathon.status).lower() in ["completed", "closed"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Registration for hackathon '{hackathon.name}' is closed."
+        )
+
     # Create the team
     db_team = models.Team(
         **team.dict(),
@@ -175,3 +183,36 @@ def remove_team_member(
     # If team was closed because it was full, and now has space, keep recruitment status or allow reopen
     db.commit()
     return {"detail": "Member removed successfully"}
+
+@router.post("/{team_id}/leave")
+def leave_team(
+    team_id: int,
+    current_user: models.User = Depends(deps.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    team = db.query(models.Team).filter(models.Team.id == team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if team.leader_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Team leader cannot leave the team.")
+    
+    member = db.query(models.TeamMember).filter(
+        models.TeamMember.team_id == team_id,
+        models.TeamMember.student_id == current_user.id
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="You are not a member of this team")
+    
+    db.delete(member)
+    
+    # Notify team leader
+    notification = models.Notification(
+        user_id=team.leader_id,
+        type="member_left",
+        title="Member Left Team",
+        message=f"{current_user.name} has left your team '{team.name}'.",
+        link=f"/teams/{team.id}/manage"
+    )
+    db.add(notification)
+    db.commit()
+    return {"detail": "Successfully left the team"}

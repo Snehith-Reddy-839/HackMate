@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
+import { signOut } from 'next-auth/react';
+import { api, invalidateCache } from '@/lib/api';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -10,11 +11,23 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import AvatarDisplay from '@/components/AvatarDisplay';
+import { Tooltip } from '@/components/ui/tooltip';
 import {
   ShieldAlert, ShieldCheck, Users, Trophy, UsersRound, FileText,
   Trash2, PlusCircle, Search, Filter, ExternalLink, Calendar,
   MapPin, Clock, ArrowRight, Code2, Globe, Sparkles, RefreshCw, Mail, CheckCircle2
 } from 'lucide-react';
+
+function formatSafeDate(dateStr?: string, pattern = 'MMM d, yyyy'): string {
+  if (!dateStr) return '-';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return format(d, pattern);
+  } catch {
+    return dateStr;
+  }
+}
 
 interface AdminOverview {
   total_students: number;
@@ -309,8 +322,21 @@ export default function AdminDashboardPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-medium">
-        Verifying administrator privileges...
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <header className="px-6 py-4 bg-slate-900 shadow-md flex items-center justify-between">
+          <div className="h-7 w-32 bg-slate-800 rounded animate-pulse" />
+          <div className="h-8 w-28 bg-slate-800 rounded animate-pulse" />
+        </header>
+        <main className="flex-1 max-w-7xl mx-auto w-full p-6 space-y-6 animate-pulse">
+          <div className="h-10 w-48 bg-slate-200 rounded-lg" />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="h-28 bg-white rounded-2xl border border-slate-200/80" />
+            <div className="h-28 bg-white rounded-2xl border border-slate-200/80" />
+            <div className="h-28 bg-white rounded-2xl border border-slate-200/80" />
+            <div className="h-28 bg-white rounded-2xl border border-slate-200/80" />
+          </div>
+          <div className="h-72 bg-white rounded-2xl border border-slate-200/80" />
+        </main>
       </div>
     );
   }
@@ -337,8 +363,10 @@ export default function AdminDashboardPage() {
               <Button variant="outline">Back to Dashboard</Button>
             </Link>
             <Button
-              onClick={() => {
+              onClick={async () => {
                 localStorage.removeItem('token');
+                invalidateCache();
+                await signOut({ redirect: false });
                 router.push('/login');
               }}
             >
@@ -398,21 +426,25 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={fetchAllData}
-            disabled={loadingData}
-            className="text-slate-300 hover:text-white hover:bg-slate-800 text-xs flex items-center gap-1.5"
-          >
-            <RefreshCw size={14} className={loadingData ? 'animate-spin' : ''} /> Refresh Data
-          </Button>
-
-          <Link href="/dashboard">
-            <Button variant="outline" size="sm" className="bg-transparent border-slate-700 text-slate-200 hover:bg-slate-800 text-xs">
-              Student Dashboard
+          <Tooltip content="Refetch all students, teams, and hackathon data from server">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={fetchAllData}
+              disabled={loadingData}
+              className="text-slate-300 hover:text-white hover:bg-slate-800 text-xs flex items-center gap-1.5"
+            >
+              <RefreshCw size={14} className={loadingData ? 'animate-spin' : ''} /> Refresh Data
             </Button>
-          </Link>
+          </Tooltip>
+
+          <Tooltip content="Navigate back to standard student dashboard">
+            <Link href="/dashboard">
+              <Button variant="outline" size="sm" className="bg-transparent border-slate-700 text-slate-200 hover:bg-slate-800 text-xs">
+                Student Dashboard
+              </Button>
+            </Link>
+          </Tooltip>
 
           <div className="flex items-center gap-2 border-l border-slate-800 pl-3">
             <AvatarDisplay
@@ -482,12 +514,16 @@ export default function AdminDashboardPage() {
                 <p className="text-sm text-gray-500 mt-0.5">Real-time statistics and administrative management for HackMate.</p>
               </div>
               <div className="flex gap-2 flex-wrap">
-                <Button variant="outline" onClick={exportHackathonsCSV} className="text-xs font-semibold">
-                  📥 Export Events CSV
-                </Button>
-                <Button variant="outline" onClick={exportStudentsCSV} className="text-xs font-semibold">
-                  📥 Export Students CSV
-                </Button>
+                <Tooltip content="Download complete hackathons roster as CSV spreadsheet">
+                  <Button variant="outline" onClick={exportHackathonsCSV} className="text-xs font-semibold">
+                    📥 Export Events CSV
+                  </Button>
+                </Tooltip>
+                <Tooltip content="Download registered Vasavi students roster as CSV spreadsheet">
+                  <Button variant="outline" onClick={exportStudentsCSV} className="text-xs font-semibold">
+                    📥 Export Students CSV
+                  </Button>
+                </Tooltip>
                 <Button onClick={() => setShowCreateHackathon(true)} className="flex items-center gap-2 text-sm font-semibold">
                   <PlusCircle size={16} /> Post New Hackathon
                 </Button>
@@ -683,11 +719,11 @@ export default function AdminDashboardPage() {
                       <div className="space-y-1.5 text-xs text-gray-600 bg-gray-50 p-3 rounded-xl border">
                         <div className="flex items-center gap-1.5">
                           <Clock size={13} className={isClosed || isCompleted ? "text-amber-600" : "text-primary"} />
-                          <span>Deadline: <strong>{format(new Date(h.registration_deadline), 'MMM d, yyyy')}</strong></span>
+                          <span>Deadline: <strong>{formatSafeDate(h.registration_deadline)}</strong></span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Calendar size={13} className="text-gray-500" />
-                          <span>Event Date: <strong>{format(new Date(h.event_date), 'MMM d, yyyy')}</strong></span>
+                          <span>Event Date: <strong>{formatSafeDate(h.event_date)}</strong></span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <MapPin size={13} className="text-gray-500" />
@@ -821,7 +857,7 @@ export default function AdminDashboardPage() {
                           </div>
                         </td>
                         <td className="p-4 text-xs text-gray-500">
-                          {s.created_at ? format(new Date(s.created_at), 'MMM d, yyyy') : '—'}
+                          {formatSafeDate(s.created_at)}
                         </td>
                         <td className="p-4 text-right pr-6">
                           <Button

@@ -17,6 +17,7 @@ export default function RegisterPage() {
     section: ''
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { data: session, status } = useSession();
 
@@ -30,6 +31,7 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     try {
       await api.post('/auth/register', formData);
       // Auto-login after registration
@@ -54,6 +56,8 @@ export default function RegisterPage() {
       } else {
         setError('Registration failed. Please verify your details or log in.');
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -125,8 +129,12 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <button type="submit" className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 mt-4">
-              Register
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 mt-4"
+            >
+              {loading ? 'Registering...' : 'Register'}
             </button>
           </div>
           

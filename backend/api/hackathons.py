@@ -71,15 +71,12 @@ def get_hackathon(hackathon_id: int, db: Session = Depends(get_db)):
     h_data.teams = teams
     return h_data
 
-# Admin only (allow admin or fallback check)
 @router.post("/", response_model=schemas.HackathonResponse)
 def create_hackathon(
     hackathon: schemas.HackathonCreate,
-    current_user: models.User = Depends(deps.get_current_active_user),
+    current_user: models.User = Depends(deps.get_current_admin_user),
     db: Session = Depends(get_db)
 ):
-    if current_user.role != models.RoleEnum.ADMIN:
-        raise HTTPException(status_code=403, detail="Only administrators can create hackathons.")
     
     db_hackathon = models.Hackathon(**hackathon.dict())
     db.add(db_hackathon)

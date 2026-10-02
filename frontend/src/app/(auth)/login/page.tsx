@@ -20,9 +20,13 @@ export default function LoginPage() {
     }
   }, [status, router]);
 
+  const [loading, setLoading] = useState(false);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setError('');
+    setLoading(true);
     try {
       const formData = new FormData();
       formData.append('username', email);
@@ -42,6 +46,8 @@ export default function LoginPage() {
       } else {
         setError('Login failed');
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -68,8 +74,12 @@ export default function LoginPage() {
             </div>
           </div>
           <div>
-            <button type="submit" className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900">
-              Sign in
+            <button
+              type="submit"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900"
+            >
+              {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
           

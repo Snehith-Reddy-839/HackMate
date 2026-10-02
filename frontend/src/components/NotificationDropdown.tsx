@@ -46,22 +46,45 @@ export default function NotificationDropdown() {
   }, []);
 
   const handleMarkAsRead = async (id: number) => {
+    const prevList = notifications;
+    const prevCount = unreadCount;
+
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+    );
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+
     try {
       await api.put(`/notifications/${id}/read`);
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (err) {
-      // ignore
+      setNotifications(prevList);
+      setUnreadCount(prevCount);
     }
   };
 
   const handleMarkAllRead = async () => {
+    const prevList = notifications;
+    const prevCount = unreadCount;
+
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+
     try {
       await api.put('/notifications/read-all');
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-      setUnreadCount(0);
     } catch (err) {
-      // ignore
+      setNotifications(prevList);
+      setUnreadCount(prevCount);
+    }
+  };
+
+  const formatNotifDate = (dateStr: string) => {
+    try {
+      if (!dateStr) return '';
+      const s = dateStr.endsWith('Z') || dateStr.includes('+') ? dateStr : `${dateStr}Z`;
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? '' : format(d, 'MMM d, h:mm a');
+    } catch (e) {
+      return '';
     }
   };
 
@@ -140,7 +163,7 @@ export default function NotificationDropdown() {
                         <div className="flex items-center justify-between mt-2 pt-1">
                           <span className="text-[10px] text-gray-400 flex items-center gap-1">
                             <Clock size={10} />
-                            {format(new Date(n.created_at + 'Z'), 'MMM d, h:mm a')}
+                            {formatNotifDate(n.created_at)}
                           </span>
                           {n.link && (
                             <Link

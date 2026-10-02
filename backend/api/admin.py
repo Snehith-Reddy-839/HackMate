@@ -57,7 +57,7 @@ def get_all_teams(
             "hackathon_name": team.hackathon_name,
             "description": team.description,
             "max_members": team.max_members,
-            "current_members": members_count + 1, # +1 for leader
+            "current_members": members_count,
             "recruitment_status": team.recruitment_status,
             "created_at": team.created_at.isoformat() if team.created_at else None,
             "leader": {

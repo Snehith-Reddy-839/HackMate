@@ -15,6 +15,7 @@ interface CompactApplicantCardProps {
   onAccept: (requestId: number) => void;
   onReject: (requestId: number) => void;
   isActionable?: boolean;
+  processing?: boolean;
 }
 
 export default function CompactApplicantCard({
@@ -23,6 +24,7 @@ export default function CompactApplicantCard({
   onAccept,
   onReject,
   isActionable = true,
+  processing = false,
 }: CompactApplicantCardProps) {
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -209,17 +211,19 @@ export default function CompactApplicantCard({
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50 h-8 text-xs font-semibold"
+                disabled={processing}
+                className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-50 h-8 text-xs font-semibold"
                 onClick={() => onReject(request.id)}
               >
                 <X size={14} className="mr-1" /> Reject
               </Button>
               <Button
                 size="sm"
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white h-8 text-xs font-semibold"
+                disabled={processing}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white h-8 text-xs font-semibold"
                 onClick={() => onAccept(request.id)}
               >
-                <Check size={14} className="mr-1" /> Accept
+                <Check size={14} className="mr-1" /> {processing ? 'Processing...' : 'Accept'}
               </Button>
             </div>
           )}

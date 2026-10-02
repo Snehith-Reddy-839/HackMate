@@ -5,7 +5,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { api } from '@/lib/api';
+import { api, invalidateCache } from '@/lib/api';
 
 export default function AuthButtons() {
   const { data: session, status } = useSession();
@@ -42,6 +42,7 @@ export default function AuthButtons() {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    invalidateCache();
     if (session) {
       signOut({ redirect: false });
     }

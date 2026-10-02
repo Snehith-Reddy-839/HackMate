@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import NotificationDropdown from '@/components/NotificationDropdown';
+import Navbar from '@/components/Navbar';
 import { ArrowLeft, Trophy, CheckCircle2, Users, Sparkles, ShieldAlert } from 'lucide-react';
 
 const COMMON_ROLES = [
@@ -43,6 +43,12 @@ function CreateTeamForm() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
     api.get('/hackathons')
       .then((res) => {
         setHackathons(res.data);
@@ -57,7 +63,7 @@ function CreateTeamForm() {
         }
       })
       .catch(() => {});
-  }, [prefilledHackathon]);
+  }, [prefilledHackathon, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -88,6 +94,13 @@ function CreateTeamForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      alert('You must be logged in to create a team.');
+      router.push('/login');
+      return;
+    }
+
     if (!formData.hackathon_name.trim()) {
       alert('Please select or specify a hackathon name.');
       return;
@@ -309,20 +322,11 @@ function CreateTeamForm() {
 
 export default function CreateTeamPage() {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="px-6 py-4 bg-white shadow-sm flex items-center justify-between sticky top-0 z-50">
-        <Link href="/" className="font-bold text-2xl text-primary">HackMate</Link>
-        <div className="flex items-center gap-4">
-          <nav className="hidden md:flex gap-6">
-            <Link href="/hackathons" className="text-gray-600 hover:text-primary font-medium">Hackathons</Link>
-            <Link href="/teams" className="text-gray-600 hover:text-primary font-medium">Teams</Link>
-            <Link href="/dashboard" className="text-gray-600 hover:text-primary font-medium">Dashboard</Link>
-          </nav>
-          <NotificationDropdown />
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-50/60 flex flex-col">
+      {/* SaaS Navbar */}
+      <Navbar />
 
-      <Suspense fallback={<div className="p-12 text-center">Loading...</div>}>
+      <Suspense fallback={<div className="p-12 text-center text-gray-500">Loading form...</div>}>
         <CreateTeamForm />
       </Suspense>
     </div>

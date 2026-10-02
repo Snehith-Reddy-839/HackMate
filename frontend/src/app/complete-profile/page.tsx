@@ -9,10 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import AvatarDisplay from '@/components/AvatarDisplay';
 import AvatarPicker from '@/components/AvatarPicker';
-import NotificationDropdown from '@/components/NotificationDropdown';
+import Navbar from '@/components/Navbar';
+import { Tooltip } from '@/components/ui/tooltip';
 import { 
   User, Code2, Trophy, Clock, Plus, Trash2, CheckCircle2, 
-  Sparkles, ShieldCheck, ArrowRight,  Link as LinkIcon, Globe, Phone
+  Sparkles, ShieldCheck, ArrowRight,  Link as LinkIcon, Globe, Phone, AlertCircle
 } from 'lucide-react';
 
 const PREFERRED_ROLES_OPTIONS = [
@@ -51,6 +52,7 @@ export default function CompleteProfilePage() {
   const [activeTab, setActiveTab] = useState<'basic' | 'tech' | 'experience' | 'availability'>('basic');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // User Core State
   const [userState, setUserState] = useState({
@@ -93,6 +95,12 @@ export default function CompleteProfilePage() {
   const [projectsList, setProjectsList] = useState<ProjectItem[]>([]);
 
   useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      router.replace('/login');
+      return;
+    }
+
     api.get('/profiles/me')
       .then((res) => {
         const u = res.data;
@@ -166,11 +174,14 @@ export default function CompleteProfilePage() {
       })
       .catch((err) => {
         console.error(err);
+        if (err.response?.status === 401) {
+          router.replace('/login');
+        }
       })
       .finally(() => {
         setLoading(false);
       });
-  }, []);
+  }, [router]);
 
   const handleUserChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -237,6 +248,7 @@ export default function CompleteProfilePage() {
 
   const handleSaveAll = async () => {
     setSaving(true);
+    setFeedback(null);
     try {
       // 1. Update Core User
       await api.put('/profiles/me/user', {
@@ -275,18 +287,48 @@ export default function CompleteProfilePage() {
         show_phone: profileState.show_phone,
       });
 
-      alert('Profile updated successfully!');
-      router.push('/dashboard');
+      setFeedback({ type: 'success', message: 'Profile updated successfully! Redirecting...' });
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 900);
     } catch (err: any) {
       console.error(err);
-      alert(err.response?.data?.detail || 'Failed to update profile');
+      setFeedback({ type: 'error', message: err.response?.data?.detail || 'Failed to update profile' });
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Loading Profile...</div>;
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <Navbar />
+        <main className="flex-1 p-6 lg:p-12 max-w-4xl mx-auto w-full space-y-8 animate-pulse">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+            <div className="space-y-2">
+              <div className="h-8 w-64 bg-slate-200 rounded-lg" />
+              <div className="h-4 w-96 bg-slate-200/60 rounded-md" />
+            </div>
+            <div className="h-10 w-44 bg-slate-200 rounded-xl" />
+          </div>
+          <div className="h-12 bg-white rounded-2xl border border-slate-200 p-1 flex gap-2">
+            <div className="flex-1 bg-slate-100 rounded-xl" />
+            <div className="flex-1 bg-slate-100 rounded-xl" />
+            <div className="flex-1 bg-slate-100 rounded-xl" />
+            <div className="flex-1 bg-slate-100 rounded-xl" />
+          </div>
+          <div className="bg-white rounded-2xl p-8 border border-slate-200/80 shadow-xs space-y-6">
+            <div className="h-6 w-48 bg-slate-200 rounded" />
+            <div className="h-28 bg-slate-100 rounded-2xl" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="h-10 bg-slate-100 rounded-md" />
+              <div className="h-10 bg-slate-100 rounded-md" />
+            </div>
+            <div className="h-24 bg-slate-100 rounded-md" />
+          </div>
+        </main>
+      </div>
+    );
   }
 
   const currentSkillTokens = profileState.skills
@@ -295,29 +337,38 @@ export default function CompleteProfilePage() {
     .filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="px-6 py-4 bg-white shadow-sm flex items-center justify-between sticky top-0 z-50">
-        <Link href="/" className="font-bold text-2xl text-primary">HackMate</Link>
-        <div className="flex items-center gap-4">
-          <nav className="hidden md:flex gap-6">
-            <Link href="/hackathons" className="text-gray-600 hover:text-primary font-medium">Hackathons</Link>
-            <Link href="/teams" className="text-gray-600 hover:text-primary font-medium">Teams</Link>
-            <Link href="/dashboard" className="text-gray-600 hover:text-primary font-medium">Dashboard</Link>
-          </nav>
-          <NotificationDropdown />
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <Navbar />
 
       <main className="flex-1 p-6 lg:p-12 max-w-4xl mx-auto w-full space-y-8">
+        {feedback && (
+          <div
+            className={`p-4 rounded-xl text-sm font-medium flex items-center gap-2.5 transition-all ${
+              feedback.type === 'success'
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                : 'bg-rose-50 text-rose-800 border border-rose-200'
+            }`}
+          >
+            {feedback.type === 'success' ? (
+              <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle size={18} className="text-rose-600 shrink-0" />
+            )}
+            <span>{feedback.message}</span>
+          </div>
+        )}
+
         {/* Top Title & Save Button */}
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">Student Profile & Preferences</h1>
-            <p className="text-gray-500 text-sm">Build your verified profile to get discovered and accepted into top teams.</p>
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Student Profile & Preferences</h1>
+            <p className="text-slate-500 text-sm mt-1">Build your verified profile to get discovered and accepted into top teams.</p>
           </div>
-          <Button onClick={handleSaveAll} disabled={saving} className="font-bold px-6 h-11">
-            {saving ? 'Saving...' : 'Save & Update Profile'}
-          </Button>
+          <Tooltip content="Save all changes and update your public teammate profile">
+            <Button onClick={handleSaveAll} disabled={saving} className="font-bold px-6 h-11 shrink-0">
+              {saving ? 'Saving...' : 'Save & Update Profile'}
+            </Button>
+          </Tooltip>
         </div>
 
         {/* Navigation Tabs */}
